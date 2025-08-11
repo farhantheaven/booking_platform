@@ -1,0 +1,20 @@
+{
+  "typescript.preferences.includePackageJsonAutoImports": "on",
+  "typescript.suggest.autoImports": true,
+  "typescript.updateImportsOnFileMove.enabled": "always",
+  "typescript.preferences.importModuleSpecifier": "relative",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit",
+    "source.organizeImports": "explicit"
+  },
+  "files.associations": {
+    "*.ts": "typescript",
+    "*.js": "javascript"
+  },
+  "debug.console.fontSize": 14,
+  "debug.console.lineHeight": 20,
+  "debug.internalConsoleOptions": "neverOpen",
+  "debug.allowBreakpointsEverywhere": true,
+  "debug.showBreakpointsInOverviewRuler": true,
+  "debug.showInlineBreakpointCandidates": true
+} 

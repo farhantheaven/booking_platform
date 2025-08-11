@@ -1,0 +1,6 @@
+[36mINFO[0m[0010] Load test completed.                         
+[36mINFO[0m[0010] Created bookings: 0                          
+time="2025-08-11T14:03:31+05:30" level=info msg="Load test completed."
+time="2025-08-11T14:03:31+05:30" level=info msg="Created bookings: 0"
+time="2025-08-11T14:16:22+05:30" level=info msg="Load test completed."
+time="2025-08-11T14:16:22+05:30" level=info msg="Created bookings: 0"
