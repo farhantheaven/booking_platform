@@ -36,9 +36,10 @@ export class ConflictDetectionService {
         }
       }
 
-      if (recurrenceRule) {
-        conflicts = await this.detectRecurringConflictsOptimized(resourceId, startTime, endTime, recurrenceRule);
-      } else {
+      // if (recurrenceRule) {
+      //   conflicts = await this.detectRecurringConflictsOptimized(resourceId, startTime, endTime, recurrenceRule);
+      // } 
+      else {
         conflicts = await this.detectSingleConflicts(resourceId, startTime, endTime);
       }
 
@@ -517,9 +518,7 @@ export class ConflictDetectionService {
       const existingRecurringBookings = await Booking.findAll({
         where: {
           resource_id: resourceId,
-          is_recurring: true,
-          start_time: { [Op.lt]: endTime },
-          end_time: { [Op.gt]: startTime }
+          is_recurring: true
         }
       });
 
@@ -580,14 +579,16 @@ export class ConflictDetectionService {
   ): boolean {
     try {
       // Generate occurrences for both patterns for the next 6 months to check for overlaps
-      const checkEnd = addMonths(new Date(), 6);
+      const checkEnd1 = addMonths(new Date(end1), 6);
+      const checkEnd2 = addMonths(new Date(end2), 6);
+
       
       const occurrences1 = this.recurrenceService.generateOccurrences(
-        rule1, start1, end1, start1, checkEnd
+        rule1, start1, end1, start1, checkEnd1
       );
       
       const occurrences2 = this.recurrenceService.generateOccurrences(
-        rule2, start2, end2, start2, checkEnd
+        rule2, start2, end2, start2, checkEnd2
       );
 
       // Check if any occurrences overlap

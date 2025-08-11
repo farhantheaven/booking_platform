@@ -61,6 +61,10 @@ export class BookingController {
     this.cancelBooking = this.cancelBooking.bind(this);
     this.getBooking = this.getBooking.bind(this);
     this.getResourceSummary = this.getResourceSummary.bind(this);
+    this.addBookingException = this.addBookingException.bind(this);
+    this.getBookingExceptions = this.getBookingExceptions.bind(this);
+    this.updateBookingException = this.updateBookingException.bind(this);
+    this.deleteBookingException = this.deleteBookingException.bind(this);
   }
 
   /**

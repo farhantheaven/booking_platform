@@ -13,13 +13,31 @@ export class RecurrenceService {
     rangeEnd: Date
   ): TimeSlot[] {
     try {
-      const rule = rrulestr(rruleString);
+      // Parse the RRule and ensure it has the start date
+      let rule = rrulestr(rruleString);
+      
+      // If the rule doesn't have a dtstart, we need to create a new one with the startTime
+      if (!rule.origOptions.dtstart) {
+        const options = { ...rule.origOptions, dtstart: startTime };
+        rule = new RRule(options);
+      }
+      
       const duration = endTime.getTime() - startTime.getTime();
       
-      // Generate occurrences within the range
-      const occurrences = rule.between(rangeStart, rangeEnd, true);
+      // Calculate proper range to ensure we don't miss occurrences
+      const { adjustedRangeStart, adjustedRangeEnd } = this.calculateOccurrenceRange(
+        startTime, endTime, rangeStart, rangeEnd
+      );
       
-      return occurrences.map(occurrence => ({
+      // Generate occurrences within the adjusted range
+      const occurrences = rule.between(adjustedRangeStart, adjustedRangeEnd, true);
+      
+      // Filter occurrences to ensure they fall within the actual requested range
+      const filteredOccurrences = occurrences.filter(occurrence => 
+        occurrence >= rangeStart && occurrence <= rangeEnd
+      );
+      
+      return filteredOccurrences.map(occurrence => ({
         start: occurrence,
         end: new Date(occurrence.getTime() + duration)
       }));
@@ -72,6 +90,68 @@ export class RecurrenceService {
   }
 
   /**
+   * Calculate the proper range for occurrence generation
+   * This ensures we don't miss the first occurrence due to time precision issues
+   */
+  calculateOccurrenceRange(
+    startTime: Date,
+    endTime: Date,
+    rangeStart: Date,
+    rangeEnd: Date
+  ): { adjustedRangeStart: Date; adjustedRangeEnd: Date } {
+    // Ensure rangeStart is at the beginning of the day to catch all occurrences
+    const adjustedRangeStart = new Date(rangeStart);
+    adjustedRangeStart.setHours(0, 0, 0, 0);
+    
+    // Ensure rangeEnd is at the end of the day to catch all occurrences
+    const adjustedRangeEnd = new Date(rangeEnd);
+    adjustedRangeEnd.setHours(23, 59, 59, 999);
+    
+    return { adjustedRangeStart, adjustedRangeEnd };
+  }
+
+  /**
+   * Debug method to test RRule behavior
+   * This helps troubleshoot occurrence generation issues
+   */
+  debugRRuleBehavior(
+    rruleString: string,
+    startTime: Date,
+    endTime: Date,
+    rangeStart: Date,
+    rangeEnd: Date
+  ): any {
+    try {
+      const rule = rrulestr(rruleString);
+      const { adjustedRangeStart, adjustedRangeEnd } = this.calculateOccurrenceRange(
+        startTime, endTime, rangeStart, rangeEnd
+      );
+      
+      // Test different range approaches
+      const occurrencesWithOriginalRange = rule.between(rangeStart, rangeEnd, true);
+      const occurrencesWithAdjustedRange = rule.between(adjustedRangeStart, adjustedRangeEnd, true);
+      
+      return {
+        rruleString,
+        originalRange: {
+          start: rangeStart.toISOString(),
+          end: rangeEnd.toISOString()
+        },
+        adjustedRange: {
+          start: adjustedRangeStart.toISOString(),
+          end: adjustedRangeEnd.toISOString()
+        },
+        occurrencesWithOriginalRange: occurrencesWithOriginalRange.map(o => o.toISOString()),
+        occurrencesWithAdjustedRange: occurrencesWithAdjustedRange.map(o => o.toISOString()),
+        countWithOriginalRange: occurrencesWithOriginalRange.length,
+        countWithAdjustedRange: occurrencesWithAdjustedRange.length
+      };
+    } catch (error) {
+      return { error: error instanceof Error ? error.message : String(error) };
+    }
+  }
+
+  /**
    * Check if a specific date is part of a recurring series
    */
   isDateInSeries(
@@ -80,7 +160,15 @@ export class RecurrenceService {
     targetDate: Date
   ): boolean {
     try {
-      const rule = rrulestr(rruleString);
+      // Parse the RRule and ensure it has the start date
+      let rule = rrulestr(rruleString);
+      
+      // If the rule doesn't have a dtstart, we need to create a new one with the startTime
+      if (!rule.origOptions.dtstart) {
+        const options = { ...rule.origOptions, dtstart: startTime };
+        rule = new RRule(options);
+      }
+      
       const occurrences = rule.between(
         new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate()),
         new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate() + 1),
@@ -104,17 +192,31 @@ export class RecurrenceService {
     count: number = 5
   ): TimeSlot[] {
     try {
-      const rule = rrulestr(rruleString);
+      // Parse the RRule and ensure it has the start date
+      let rule = rrulestr(rruleString);
+      
+      // If the rule doesn't have a dtstart, we need to create a new one with the startTime
+      if (!rule.origOptions.dtstart) {
+        const options = { ...rule.origOptions, dtstart: startTime };
+        rule = new RRule(options);
+      }
+      
       const duration = endTime.getTime() - startTime.getTime();
       
-      const occurrences = rule.after(fromDate, false);
-      const nextOccurrences: Date[] = [];
+      // Use between method to get occurrences in a range starting from after the fromDate
+      // This ensures we get occurrences strictly after the fromDate
+      const rangeEnd = new Date(fromDate.getTime() + (365 * 24 * 60 * 60 * 1000)); // 1 year later
+      const allOccurrences = rule.between(fromDate, rangeEnd, true);
       
-      let current = occurrences;
-      while (nextOccurrences.length < count && current) {
-        nextOccurrences.push(current);
-        current = rule.after(current, false);
-      }
+      // Filter to get only occurrences strictly after the fromDate and limit to count
+      // We need to exclude the entire day of fromDate, so we check if the occurrence date is different
+      const nextOccurrences = allOccurrences
+        .filter(occurrence => {
+          const occurrenceDate = new Date(occurrence.getFullYear(), occurrence.getMonth(), occurrence.getDate());
+          const fromDateOnly = new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate());
+          return occurrenceDate > fromDateOnly;
+        })
+        .slice(0, count);
       
       return nextOccurrences.map(occurrence => ({
         start: occurrence,
@@ -131,7 +233,14 @@ export class RecurrenceService {
    */
   calculateSeriesEndDate(rruleString: string, startDate: Date): Date | null {
     try {
-      const rule = rrulestr(rruleString);
+      // Parse the RRule and ensure it has the start date
+      let rule = rrulestr(rruleString);
+      
+      // If the rule doesn't have a dtstart, we need to create a new one with the startDate
+      if (!rule.origOptions.dtstart) {
+        const options = { ...rule.origOptions, dtstart: startDate };
+        rule = new RRule(options);
+      }
       
       // If the rule has an until date, return it
       if (rule.options.until) {

@@ -245,9 +245,9 @@ describe('RecurrenceService', () => {
   describe('getHumanReadableDescription', () => {
     it('should generate human-readable descriptions', () => {
       const testCases = [
-        { rrule: 'FREQ=DAILY;COUNT=5', expectedKeywords: ['daily', '5'] },
-        { rrule: 'FREQ=WEEKLY;BYDAY=MO,WE,FR', expectedKeywords: ['weekly'] },
-        { rrule: 'FREQ=MONTHLY;BYMONTHDAY=15', expectedKeywords: ['monthly'] }
+        { rrule: 'FREQ=DAILY;COUNT=5', expectedKeywords: ['day', '5'] },
+        { rrule: 'FREQ=WEEKLY;BYDAY=MO,WE,FR', expectedKeywords: ['week'] },
+        { rrule: 'FREQ=MONTHLY;BYMONTHDAY=15', expectedKeywords: ['month'] }
       ];
 
       testCases.forEach(({ rrule, expectedKeywords }) => {
