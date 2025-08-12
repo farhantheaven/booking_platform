@@ -35,10 +35,6 @@ export class ConflictDetectionService {
           return duplicateCheck; // Already enhanced with local time
         }
       }
-
-      // if (recurrenceRule) {
-      //   conflicts = await this.detectRecurringConflictsOptimized(resourceId, startTime, endTime, recurrenceRule);
-      // } 
       else {
         conflicts = await this.detectSingleConflicts(resourceId, startTime, endTime);
       }
@@ -518,13 +514,60 @@ export class ConflictDetectionService {
       const existingRecurringBookings = await Booking.findAll({
         where: {
           resource_id: resourceId,
-          is_recurring: true
-        }
+          is_recurring: true,
+          // [Op.or]: [  
+          //   {
+          //     start_time: { [Op.lt]: endTime },
+          //     end_time: { [Op.gt]: startTime }
+          //   },
+          //   Sequelize.literal(`(CAST("Booking"."start_time" AS TIME) <= '${endTime.toTimeString().split(' ')[0]}' AND CAST("Booking"."end_time" AS TIME) >= '${startTime.toTimeString().split(' ')[0]}')`)
+          // ]
+        },
+        // include: [
+        //   {
+        //     model: BookingException,
+        //     as: 'exceptions',
+        //     required: false,
+        //     separate: false
+        //   }
+        // ]
       });
+
+      // Load exceptions separately for each booking
+      for (const booking of existingRecurringBookings) {
+        const exceptions = await BookingException.findAll({
+          where: {
+            booking_id: booking.id,
+            exception_date: startTime.toISOString().split('T')[0],
+            exception_type: 'cancelled'
+          }
+        });
+        (booking as any).exceptions = exceptions;
+        console.log('🔍 Loaded exceptions for booking', booking.id, ':', exceptions.length);
+      }
 
       const conflicts: ConflictingBooking[] = [];
 
       for (const existingBooking of existingRecurringBookings) {
+        console.log('🔍 Processing booking:', existingBooking.id, 'with', (existingBooking as any).exceptions?.length || 0, 'exceptions');
+        
+        // Filter exceptions for the specific date and type
+        const relevantExceptions = (existingBooking as any).exceptions?.filter((exception: any) => 
+          (
+            (exception.new_start_time && exception.new_end_time && 
+             exception.new_start_time <= endTime && exception.new_end_time >= startTime) ||
+            (exception.new_start_time === null && exception.new_end_time === null)
+          )
+        ) || [];
+
+        console.log('🔍 Relevant exceptions found:', relevantExceptions.length);
+
+        // If there are relevant cancelled exceptions for this date, skip this booking
+        if (relevantExceptions.length > 0 && !existingBooking.recurrence_rule) {
+          console.log('🔍 Skipping booking due to cancelled exceptions');
+          continue; // This time slot is cancelled, so it's available for new bookings
+        }
+
         // Check if the time patterns are identical
         const existingStart = new Date(existingBooking.start_time);
         const existingEnd = new Date(existingBooking.end_time);
@@ -545,8 +588,6 @@ export class ConflictDetectionService {
           });
         }
         
-        // Also check if the new recurring pattern would overlap with existing ones
-        // This catches cases where someone tries to create overlapping recurring patterns
         if (existingBooking.recurrence_rule && this.wouldRecurringPatternsOverlap(
           startTime, endTime, recurrenceRule,
           existingStart, existingEnd, existingBooking.recurrence_rule
@@ -569,6 +610,7 @@ export class ConflictDetectionService {
       return [];
     }
   }
+
 
   /**
    * Check if two recurring patterns would overlap
@@ -711,39 +753,6 @@ export class ConflictDetectionService {
         endTime: endTimeInfo
       }
     };
-  }
-
-  /**
-   * Check if a date falls within a user timezone-aware range
-   * This is useful for recurring bookings that span multiple days
-   */
-  private isDateInUserTimezoneRange(date: Date, startDate: Date, endDate: Date): boolean {
-    const localDate = this.getUserLocalDateString(date);
-    const localStart = this.getUserLocalDateString(startDate);
-    const localEnd = this.getUserLocalDateString(endDate);
-    
-    return localDate >= localStart && localDate <= localEnd;
-  }
-
-  /**
-   * Get user timezone offset for the given date
-   * This helps with debugging and timezone-aware operations
-   */
-  private getUserTimezoneOffset(date: Date): number {
-    return date.getTimezoneOffset();
-  }
-
-  /**
-   * Format date for user display (in user's timezone)
-   * This ensures dates are shown in the user's expected format
-   */
-  private formatDateForUser(date: Date): string {
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      timeZone: 'UTC' // We'll handle timezone conversion in the frontend
-    });
   }
 
   /**
