@@ -1,0 +1,7 @@
+# Exclude large load test result files
+test-results/**/*.json
+test-results/**/*.csv
+
+# Keep only summary files
+!test-results/**/*.txt
+!test-results/**/*.md
