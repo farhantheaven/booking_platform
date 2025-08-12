@@ -501,9 +501,6 @@ Starting Load Test: 1000 Bookings over 1 Hour
 📈 Total requests: 1,247
 📁 Results directory: test-results/load-tests/1000-bookings-test-20250115-143022
 📋 Summary: test-results/load-tests/1000-bookings-test-20250115-143022/summary.txt
-📊 Detailed results: test-results/load-tests/1000-bookings-test-20250115-143022/load-test-results.json
-📈 CSV data: test-results/load-tests/1000-bookings-test-20250115-143022/load-test-results.csv
-
 🎯 Load test completed!
 📁 All results saved to: test-results/load-tests/1000-bookings-test-20250115-143022
 ```
